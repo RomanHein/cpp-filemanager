@@ -1,3 +1,11 @@
+# API Table
+* [Constructor](#filemanagerfile_path)
+* [read](#readindex)
+* [front](#front)
+* [back](#back)
+* [all](#all)
+* [append](#appendargs)
+
 # filemanager(file_path)
 Constructs a new filemanager instance and maps the file structure.
 
