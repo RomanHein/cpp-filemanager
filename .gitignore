@@ -1,0 +1,9 @@
+*.exe
+*.tmp
+*.log
+*.txt
+
+source
+.idea
+
+!CMakeLists.txt
