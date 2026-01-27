@@ -1,23 +1,37 @@
-# API Table
-* [Constructor](#filemanagerfile_path)
-* [read](#readindex)
-* [front](#front)
-* [back](#back)
-* [all](#all)
-* [append](#appendargs)
+# Content
+* Member functions
+  * [constructor](#filemanagerfile_path)
+* Element access
+  * [read](#readindex)
+  * [front](#front)
+  * [back](#back)
+  * [all](#all)
+* Modifiers
+  * [append](#appendargs)
 
-# filemanager(file_path)
-Constructs a new filemanager instance and maps the file structure.
+# -- MEMBER FUNCTIONS --
+## filemanager(file_path)
+Constructs a new filemanager instance and maps the file structure.  
+\- Creates the file if it doesn't exist.
 
 ### Parameters
 **std::filesystem::path** `file_path` - Path to a file which the filemanager should handle (e.g. `"C:\file.txt"`)
 
 ### Exceptions
-`std::runtime_error` - Problems with permission
+**std::runtime_error** - Problems with permission
+
+### Code sample
+```
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt"); // Creates file if it doesn't exist
+}
+```
 
 
-
-# read(index)
+# -- ELEMENT ACCESS --
+## read(index)
 Retrieves the content of a specified line.
 
 ### Parameters
@@ -27,12 +41,34 @@ Retrieves the content of a specified line.
 `std::string` - Text at the specified line (without trailing '\n')
 
 ### Exceptions
-`std::out_of_range` - Specified index is out of bounds (e.g. when trying to read line 5 when the file only has 4 lines)  
-`std::runtime_error` - File was deleted or problems with permission
+**std::out_of_range** - Specified index is out of bounds (e.g. when trying to read line 5 when the file only has 4 lines)  
+**std::runtime_error** - File was deleted or problems with permission
+
+### Code sample
+```
+/*
+    Imagine a file 'data.txt' with following lines:
+    (1) Hello
+    (2) World
+    (3) !  
+*/
+
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    std::cout << file.read(1);
+}
+```
+
+### Output
+```
+World
+```
 
 
-
-# front()
+## front()
 Retrieves the content at the first line.
 
 ### Returns
@@ -44,7 +80,7 @@ Retrieves the content at the first line.
 
 
 
-# back()
+## back()
 Retrieves the content at the last line.
 
 ### Returns
@@ -56,7 +92,7 @@ Retrieves the content at the last line.
 
 
 
-# all()
+## all()
 Returns a chronological copy of every line.
 
 ### Returns
@@ -70,7 +106,8 @@ Returns a chronological copy of every line.
 
 
 
-# append(args)
+# -- MODIFIERS --
+## append(args)
 Adds the specified arguments to a new line at the end of the file.
 
 ### Parameters
