@@ -7,7 +7,11 @@
   * [back](#back)
   * [all](#all)
 * Modifiers
-  * [append](#appendargs)
+  * [append](#append---appendargs)
+  * [overwrite](#overwrite---overwriteindex-args)
+* Persistance
+  * flush
+  * commit
 
 # -- MEMBER FUNCTIONS --
 ## filemanager(file_path)
@@ -107,11 +111,80 @@ Returns a chronological copy of every line.
 
 
 # -- MODIFIERS --
-## append(args)
-Adds the specified arguments to a new line at the end of the file.
+## APPEND - `append(args)`
+### Description
+Adds data as a new line at the end of the file. Doesn't update the file (Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).
 
 ### Parameters
-**Args...** `args` - Values to append (e.g. `"Hello", " World", "!"`)
+| Parameter | Datatype  | Description                  | Notes                         |  
+|-----------|-----------|------------------------------|-------------------------------|
+| `args`    | `Args...` | One or more values to append | Must not contain `\n` or `\r` |
 
 ### Exceptions
-`std::invalid_argument` - Tried to append string which contains newline character ('\n' or '\r')
+| Exception               | Cause                                                                           | Fix                                                                                       |  
+|-------------------------|---------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| `std::invalid_argument` | Input contains newline character (`\n` or `\r`)                                 | Remove `\n` and `\r` occurences when using `append()` or `overwrite()`                    |
+
+### Code sample
+```
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    file.append("hello", "world", '!', 11);
+    std::cout << file.back();
+}
+```
+
+### Output
+```
+helloworld!11
+```
+
+
+
+## OVERWRITE - `overwrite(index, args)`
+### Description
+Overwrites a line with new data. Doesn't update the file (Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).
+
+### Parameters
+| Parameter | Datatype  | Description                   | Notes                          |  
+|-----------|-----------|-------------------------------|--------------------------------|
+| `index`   | `size_t`  | Line to overwrite.            | Starts at 0.                   |
+| `args`    | `Args...` | One or more values to append. | Must not contain `\n` or `\r`. |
+
+### Exceptions
+| Exception               | Cause                                           | Fix                                                                    |  
+|-------------------------|-------------------------------------------------|------------------------------------------------------------------------|
+| `std::invalid_argument` | Input contains newline character (`\n` or `\r`) | Remove `\n` and `\r` occurences when using `append()` or `overwrite()` |
+| `std::out_of_range`     | Specified line doesn't exist                    | Check bounds with `size()` or `empty() `                               |
+
+### Code sample
+```
+/*
+    Imagine a file 'data.txt' with following lines:
+    (1) Hello
+    (2) World
+    (3) !  
+*/
+
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    file.overwrite(0, "Good", "bye");
+    std::cout << file.read(0);
+}
+```
+
+### Output
+```
+Goodbye
+```
+
+# -- PERSISTENCE --
+## FLUSH - `flush()`
+
+## COMMIT - `commit()`

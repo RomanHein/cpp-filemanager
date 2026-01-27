@@ -16,7 +16,7 @@
 #include <intrin.h>
 #endif
 
-#define THROW_FILE_LOCKED throw std::runtime_error("FileManager -> All attempts to save data failed");
+#define THROW_FILE_LOCKED throw std::logical_error("FileManager -> All attempts to save data failed");
 #define THROW_INVALID_INDEX(index, active_indices) throw std::out_of_range("FileManager -> Index " + std::to_string(index) + " is out of bounds (file only has " + std::to_string(active_indices) + " lines)");
 #define THROW_NO_FRONT_OR_BACK throw std::out_of_range("FileManager -> Can't access front/back because file is empty");
 #define THROW_ILLEGAL_CHARACTER throw std::invalid_argument("FileManager -> Tried to append/overwrite with illegal character (\\n or \\r)");
