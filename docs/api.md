@@ -1,55 +1,79 @@
 # Content
+
 * Member functions
-  * [constructor](#filemanagerfile_path)
+  * [constructor](#constructor---filemanagerfile_path)
 * Element access
-  * [read](#readindex)
-  * [front](#front)
-  * [back](#back)
-  * [all](#all)
+  * [read](#read---readindex)
+  * [front](#front---front)
+  * [back](#back---back)
+  * [all](#all---all)
 * Modifiers
   * [append](#append---appendargs)
   * [overwrite](#overwrite---overwriteindex-args)
-* Persistance
-  * flush
-  * commit
+* Persistence
+  * [flush](#flush---flush)
+  * [commit](#commit---commit)
 
 # -- MEMBER FUNCTIONS --
-## filemanager(file_path)
-Constructs a new filemanager instance and maps the file structure.  
-\- Creates the file if it doesn't exist.
+
+## CONSTRUCTOR - filemanager(file_path)
+
+### Description
+
+Constructs a new filemanager instance and maps the file structure.
 
 ### Parameters
-**std::filesystem::path** `file_path` - Path to a file which the filemanager should handle (e.g. `"C:\file.txt"`)
+
+| Parameter   | Datatype                | Description    | Notes                                     |
+|-------------|-------------------------|----------------|-------------------------------------------|
+| `file_path` | `std::filesystem::path` | Path to a file | File will be created if it does not exist |
 
 ### Exceptions
-**std::runtime_error** - Problems with permission
+
+| Exception            | Cause                                        | Fix                                                                                     |
+|----------------------|----------------------------------------------|-----------------------------------------------------------------------------------------|
+| `std::runtime_error` | File was deleted or problems with permission | Ensure to run the program with enough permissions and check if read-only mode is active |
 
 ### Code sample
-```
+
+```cpp
 #include "filemanager.h"
 
 int main() {
-    fm::filemanager file("data.txt"); // Creates file if it doesn't exist
+    fm::filemanager file("data.txt");
 }
 ```
 
-
 # -- ELEMENT ACCESS --
-## read(index)
+
+## READ - `read(index)`
+
+### Description
+
 Retrieves the content of a specified line.
 
 ### Parameters
-**size_t** `index` - Index of the line to read e.g. `0`
+
+| Parameter | Datatype | Description        | Notes       |
+| --------- | -------- | ------------------ | ----------- |
+| `index`   | `size_t` | Which line to read | Starts at 0 |
 
 ### Returns
-`std::string` - Text at the specified line (without trailing '\n')
+
+| Type          | Description    | Notes |
+| ------------- | -------------- | ----- |
+| `std::string` | Specified line |       |
 
 ### Exceptions
-**std::out_of_range** - Specified index is out of bounds (e.g. when trying to read line 5 when the file only has 4 lines)  
-**std::runtime_error** - File was deleted or problems with permission
+
+| Exception            | Cause                                        | Fix                                                                                     |
+| -------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `std::out_of_range`  | Line doesn't exist                           | Check bounds with `size()` or `empty()` before access                                   |
+| `std::runtime_error` | File was deleted or problems with permission | Ensure to run the program with enough permissions and check if read-only mode is active |
 
 ### Code sample
-```
+
+```cpp
 /*
     Imagine a file 'data.txt' with following lines:
     (1) Hello
@@ -67,66 +91,169 @@ int main() {
 ```
 
 ### Output
-```
+
+```powershell
 World
 ```
 
+## FRONT - `front()`
 
-## front()
+### Description
+
 Retrieves the content at the first line.
 
 ### Returns
-`std::string` - Text at the first line (without trailing '\n')
+
+| Type          | Description | Notes |
+|---------------|-------------|-------|
+| `std::string` | First line  |       |
 
 ### Exceptions
-`std::out_of_range` - File is empty  
-`std::runtime_error` - File was deleted or problems with permission
 
+| Exception            | Cause                                        | Fix                                                                                     |
+|----------------------|----------------------------------------------|-----------------------------------------------------------------------------------------|
+| `std::out_of_range`  | File is empty                                | Check bounds with `size()` or `empty()` before access                                   |
+| `std::runtime_error` | File was deleted or problems with permission | Ensure to run the program with enough permissions and check if read-only mode is active |
 
+### Code sample
 
-## back()
+```cpp
+/*
+    Imagine a file 'data.txt' with following lines:
+    (1) Hello
+    (2) World
+    (3) !  
+*/
+
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    std::cout << file.front();
+}
+```
+
+### Output
+
+```powershell
+Hello
+```
+
+## BACK - `back()`
+
+### Description
+
 Retrieves the content at the last line.
 
 ### Returns
-`std::string` - Text at the last line (without trailing '\n')
+
+| Type          | Description | Notes |
+|---------------|-------------|-------|
+| `std::string` | Last line   |       |
 
 ### Exceptions
-`std::out_of_range` - File is empty  
-`std::runtime_error` - File was deleted or problems with permission
 
+| Exception            | Cause                                        | Fix                                                                                     |
+|----------------------|----------------------------------------------|-----------------------------------------------------------------------------------------|
+| `std::out_of_range`  | File is empty                                | Check bounds with `size()` or `empty()` before access                                   |
+| `std::runtime_error` | File was deleted or problems with permission | Ensure to run the program with enough permissions and check if read-only mode is active |
 
+### Code sample
 
-## all()
+```cpp
+/*
+    Imagine a file 'data.txt' with following lines:
+    (1) Hello
+    (2) World
+    (3) !  
+*/
+
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    std::cout << file.back();
+}
+```
+
+### Output
+
+```powershell
+!
+```
+
+## ALL - `all()`
+
+### Description
+
 Returns a chronological copy of every line.
 
 ### Returns
-`std::vector<std::string>` - Text at every line (without trailing '\n')
 
-### Remarks
-* Returning vector can be empty
+| Type                       | Description           | Notes        |
+|----------------------------|-----------------------|--------------|
+| `std::vector<std::string>` | All lines in the file | Can be empty |
 
 ### Exceptions
-`std::runtime_error` - File was deleted or problems with permission
 
+| Exception            | Cause                                        | Fix                                                                                     |
+|----------------------|----------------------------------------------|-----------------------------------------------------------------------------------------|
+| `std::runtime_error` | File was deleted or problems with permission | Ensure to run the program with enough permissions and check if read-only mode is active |
 
+### Code sample
+
+```cpp
+/*
+    Imagine a file 'data.txt' with following lines:
+    (1) Hello
+    (2) World
+    (3) !  
+*/
+
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    for (std::string line : file.all()) {
+      std::cout << line << "\n";
+    }
+}
+```
+
+### Output
+
+```powershell
+Hello
+World
+!
+```
 
 # -- MODIFIERS --
+
 ## APPEND - `append(args)`
+
 ### Description
+
 Adds data as a new line at the end of the file. Doesn't update the file (Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).
 
 ### Parameters
-| Parameter | Datatype  | Description                  | Notes                         |  
+
+| Parameter | Datatype  | Description                  | Notes                         |
 |-----------|-----------|------------------------------|-------------------------------|
 | `args`    | `Args...` | One or more values to append | Must not contain `\n` or `\r` |
 
 ### Exceptions
-| Exception               | Cause                                                                           | Fix                                                                                       |  
-|-------------------------|---------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
-| `std::invalid_argument` | Input contains newline character (`\n` or `\r`)                                 | Remove `\n` and `\r` occurences when using `append()` or `overwrite()`                    |
+
+| Exception               | Cause                                           | Fix                                                                    |
+|-------------------------|-------------------------------------------------|------------------------------------------------------------------------|
+| `std::invalid_argument` | Input contains newline character (`\n` or `\r`) | Remove `\n` and `\r` ocurrences when using `append()` or `overwrite()` |
 
 ### Code sample
-```
+
+```cpp
 #include <iostream>
 #include "filemanager.h"
 
@@ -138,30 +265,36 @@ int main() {
 ```
 
 ### Output
-```
+
+```powershell
 helloworld!11
 ```
 
-
-
 ## OVERWRITE - `overwrite(index, args)`
+
 ### Description
-Overwrites a line with new data. Doesn't update the file (Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).
+
+Overwrites a line with new data.
+
+*Does not update the file (Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).*
 
 ### Parameters
-| Parameter | Datatype  | Description                   | Notes                          |  
-|-----------|-----------|-------------------------------|--------------------------------|
-| `index`   | `size_t`  | Line to overwrite.            | Starts at 0.                   |
-| `args`    | `Args...` | One or more values to append. | Must not contain `\n` or `\r`. |
+
+| Parameter | Datatype  | Description                  | Notes                         |
+|-----------|-----------|------------------------------|-------------------------------|
+| `index`   | `size_t`  | Line to overwrite            | Starts at 0                   |
+| `args`    | `Args...` | One or more values to append | Must not contain `\n` or `\r` |
 
 ### Exceptions
-| Exception               | Cause                                           | Fix                                                                    |  
+
+| Exception               | Cause                                           | Fix                                                                    |
 |-------------------------|-------------------------------------------------|------------------------------------------------------------------------|
-| `std::invalid_argument` | Input contains newline character (`\n` or `\r`) | Remove `\n` and `\r` occurences when using `append()` or `overwrite()` |
-| `std::out_of_range`     | Specified line doesn't exist                    | Check bounds with `size()` or `empty() `                               |
+| `std::invalid_argument` | Input contains newline character (`\n` or `\r`) | Remove `\n` and `\r` ocurrences when using `append()` or `overwrite()` |
+| `std::out_of_range`     | Specified line doesn't exist                    | Check bounds with `size()` or `empty()` before access                  |
 
 ### Code sample
-```
+
+```cpp
 /*
     Imagine a file 'data.txt' with following lines:
     (1) Hello
@@ -180,11 +313,96 @@ int main() {
 ```
 
 ### Output
-```
+
+```powershell
 Goodbye
 ```
 
 # -- PERSISTENCE --
+
 ## FLUSH - `flush()`
 
+### Description
+
+Records all changes in a journal, making recovery possible after a crash.
+
+**Does not apply changes** (see [commit()](#commit---commit)).
+
+### Returns
+
+| Type   | Description                     | Notes                                                         |
+| ------ | ------------------------------- | ------------------------------------------------------------- |
+| `bool` | Whether flushing was successful | Handle possible failures if the working directory is unstable |
+
+### Code sample
+
+```cpp
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    file.append("this data will be recovered!");
+    file.flush();
+
+    // Imagine abort() is called once here, regardless whether the program
+    // is restarted, to simulate a random crash and test the recovery.
+
+    for (std::string line : file.all()) {
+        std::cout << line << "\n";
+    }
+}
+```
+
+### Output (2nd start)
+
+```powershell
+this data will be recovered!
+this data will be recovered!
+```
+
+### File content
+
+```
+
+```
+
 ## COMMIT - `commit()`
+
+### Description
+
+Deletes the journal and applies all changes to the main file.
+
+Triggers reconstruction internals to make up for the new file. It's **discouraged to repeatedly call** `commit()`. It can have a **noticeable impact on performance** if used carelessly on big files.
+
+### Returns
+
+| Type   | Description                       | Notes                                                         |
+| ------ | --------------------------------- | ------------------------------------------------------------- |
+| `bool` | Whether committing was successful | Handle possible failures if the working directory is unstable |
+
+Code sample
+
+```cpp
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    file.append("this data will be written!");
+    file.commit();
+    std::cout << file.front();
+}
+```
+
+### Output
+
+```
+this data will be written!
+```
+
+### File content
+
+```
+this data will be written!
+```
