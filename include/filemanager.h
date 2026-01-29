@@ -16,16 +16,55 @@
 #include <intrin.h>
 #endif
 
-#define THROW_FILE_LOCKED throw std::logical_error("FileManager -> All attempts to save data failed");
-#define THROW_INVALID_INDEX(index, active_indices) throw std::out_of_range("FileManager -> Index " + std::to_string(index) + " is out of bounds (file only has " + std::to_string(active_indices) + " lines)");
-#define THROW_NO_FRONT_OR_BACK throw std::out_of_range("FileManager -> Can't access front/back because file is empty");
-#define THROW_ILLEGAL_CHARACTER throw std::invalid_argument("FileManager -> Tried to append/overwrite with illegal character (\\n or \\r)");
-#define THROW_COULDNT_OPEN_FILE(file) throw std::runtime_error("FileManager -> Couldn't open file " + file);
-#define THROW_COULDNT_DELETE_JOURNAL throw std::runtime_error("FileManager -> Couldn't delete journal, missing permissions?");
-
 #define JOURNAL_TOKEN_DELIMITER ';'
 
 namespace fm {
+// --------------------------------------------------
+//                    EXCEPTIONS
+// --------------------------------------------------
+
+class invalid_index_error : public std::out_of_range {
+public:
+    explicit invalid_index_error(const size_t index)
+        :   std::out_of_range("fm::filemanager: tried to access line with index " + std::to_string(index) + " which doesn't exist")
+    {}
+};
+
+class file_empty_error : public std::out_of_range {
+public:
+    explicit file_empty_error()
+        :   std::out_of_range("fm::filemanager: tried to access front/back on an empty file")
+    {}
+};
+
+class illegal_character_error : public std::invalid_argument {
+public:
+    explicit illegal_character_error()
+        :   std::invalid_argument("fm::filemanager: tried to write newline character (\\n or \\r)")
+    {}
+};
+
+class file_locked_error : public std::runtime_error {
+public:
+    explicit file_locked_error()
+      :   std::runtime_error("fm::filemanager: all attempts to save failed. manager entered read-only mode")
+    {}
+};
+
+class failed_delete_journal_error : public std::runtime_error {
+public:
+    explicit failed_delete_journal_error()
+      :   std::runtime_error("fm::filemanager: failed to delete journal")
+    {}
+};
+
+class couldnt_open_file_error : public std::runtime_error {
+public:
+    explicit couldnt_open_file_error(const std::filesystem::path& file_path)
+      :   std::runtime_error("fm::filemanager: couldnt open file " + file_path.string())
+    {}
+};
+
 namespace internal {
 // --------------------------------------------------
 //                       ENUMS
@@ -162,7 +201,7 @@ public:
 
     void build() {
         std::ifstream istream(file_path_, std::ios::binary);
-        if (!istream.is_open()) THROW_COULDNT_OPEN_FILE(file_path_.string());
+        if (!istream.is_open()) throw couldnt_open_file_error(file_path_);
 
         size_t first_line_size = std::string::npos;
         std::vector<uint32_t> offset_sums(128);
@@ -443,7 +482,7 @@ public:
 private:
     [[nodiscard]] std::string access_(const size_t physical_index) {
         if (const auto it = changes_.find(physical_index); it != changes_.end()) return it->second;
-        if (!istream_.is_open()) THROW_COULDNT_OPEN_FILE(file_path_.string());
+        if (!istream_.is_open()) throw couldnt_open_file_error(file_path_);
         istream_.seekg(static_cast<std::streamoff>(byte_offset_map_.select(physical_index)), std::ios::beg);
 
         std::string line;
@@ -485,8 +524,7 @@ public:
         std::string line;
         std::vector<std::string> args;
 
-        if (!istream.is_open())
-            THROW_COULDNT_OPEN_FILE(journal_path_.string());
+        if (!istream.is_open()) throw couldnt_open_file_error(journal_path_);
 
         while (std::getline(istream, line)) {
             if (line.size() < 2) continue;
@@ -613,8 +651,10 @@ public:
      * @brief Creates a new file manager instance
      * @param file_path Path of the file you want to manage
      */
-    explicit filemanager(const std::filesystem::path &file_path) : file_io_(file_path),
-                                                                   journal_(file_path) {
+    explicit filemanager(const std::filesystem::path &file_path)
+        :   file_io_(file_path),
+            journal_(file_path)
+    {
         if (file_io_.exists()) {
             file_io_.load();
         }
@@ -631,8 +671,7 @@ public:
      * @throw out_of_range If the given index is out of bounds
      */
     [[nodiscard]] std::string read(const size_t index) {
-        if (index >= file_io_.size())
-            THROW_INVALID_INDEX(index, file_io_.size());
+        if (index >= file_io_.size()) throw invalid_index_error(index);
         return file_io_.read(index);
     }
 
@@ -642,8 +681,7 @@ public:
      * @throw out_of_range If the file is empty
      */
     [[nodiscard]] std::string front() {
-        if (file_io_.empty())
-            THROW_NO_FRONT_OR_BACK;
+        if (file_io_.empty()) throw file_empty_error();
         return file_io_.front();
     }
 
@@ -653,8 +691,7 @@ public:
      * @throw out_of_range If the file is empty
      */
     [[nodiscard]] std::string back() {
-        if (file_io_.empty())
-            THROW_NO_FRONT_OR_BACK;
+        if (file_io_.empty()) throw file_empty_error();
         return file_io_.back();
     }
 
@@ -674,13 +711,12 @@ public:
      */
     template<typename... Args>
     void append(Args... args) {
-        if (manager_state_ == internal::ManagerState::Locked)
-            THROW_FILE_LOCKED;
+        if (manager_state_ == internal::ManagerState::Locked) throw file_locked_error();
 
         std::ostringstream oss;
         (oss << ... << args);
 
-        if (!is_valid_input_(oss.str())) THROW_ILLEGAL_CHARACTER;
+        if (!is_valid_input_(oss.str())) throw illegal_character_error();
 
         file_io_.append(oss.str());
         journal_.record(internal::Instruction::Append, oss.str());
@@ -695,16 +731,13 @@ public:
      */
     template<typename... Args>
     void overwrite(const size_t index, Args... args) {
-        if (manager_state_ == internal::ManagerState::Locked)
-            THROW_FILE_LOCKED;
-        if (index >= file_io_.size())
-            THROW_INVALID_INDEX(index, file_io_.size());
+        if (manager_state_ == internal::ManagerState::Locked) throw file_locked_error();;
+        if (index >= file_io_.size()) throw invalid_index_error(index);
 
         std::ostringstream oss;
         (oss << ... << args);
 
-        if (!is_valid_input_(oss.str()))
-            THROW_ILLEGAL_CHARACTER;
+        if (!is_valid_input_(oss.str())) throw illegal_character_error();;
 
         file_io_.overwrite(index, oss.str());
         journal_.record(internal::Instruction::Overwrite, index, oss.str());
@@ -716,10 +749,8 @@ public:
      * @throw out_of_range If the given index is out of bounds
      */
     void erase(const size_t index) {
-        if (manager_state_ == internal::ManagerState::Locked)
-            THROW_FILE_LOCKED;
-        if (index >= file_io_.size())
-            THROW_INVALID_INDEX(index, file_io_.size());
+        if (manager_state_ == internal::ManagerState::Locked) throw file_locked_error();;
+        if (index >= file_io_.size()) throw invalid_index_error(index);
         file_io_.erase(index);
         journal_.record(internal::Instruction::Erase, index);
     }
@@ -728,8 +759,7 @@ public:
      * @brief Deletes every line, making the file empty
      */
     void clear() {
-        if (manager_state_ == internal::ManagerState::Locked)
-            THROW_FILE_LOCKED;
+        if (manager_state_ == internal::ManagerState::Locked) throw file_locked_error();;
         file_io_.clear();
         journal_.record(internal::Instruction::Clear);
     }
@@ -768,7 +798,7 @@ public:
         } else if (commited) {
             manager_state_ = internal::ManagerState::Locked;
             file_io_.load();
-            THROW_COULDNT_DELETE_JOURNAL;
+            throw failed_delete_journal_error();
         }
 
         if (!journal_.flush()) {
@@ -809,12 +839,6 @@ private:
     internal::ManagerState manager_state_ = internal::ManagerState::Healthy;
 };
 }
-
-#undef THROW_FILE_LOCKED
-#undef THROW_ILLEGAL_CHARACTER
-#undef THROW_INVALID_INDEX
-#undef THROW_NO_FRONT_OR_BACK
-#undef THROW_COULDNT_OPEN_FILE
 
 #undef JOURNAL_TOKEN_DELIMITER
 

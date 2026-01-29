@@ -1,18 +1,32 @@
 # Content
 
-* Member functions
-  * [constructor](#constructor---filemanagerfile_path)
-* Element access
-  * [read](#read---readindex)
-  * [front](#front---front)
-  * [back](#back---back)
-  * [all](#all---all)
-* Modifiers
-  * [append](#append---appendargs)
-  * [overwrite](#overwrite---overwriteindex-args)
-* Persistence
-  * [flush](#flush---flush)
-  * [commit](#commit---commit)
+Member functions
+
+* [constructor](#constructor---filemanagerfile_path)
+
+Element access
+
+* [read](#read---readindex)
+* [front](#front---front)
+* [back](#back---back)
+* [all](#all---all)
+
+Capacity
+
+* [size()](#size---size)
+* [empty()](#clear--clear)
+
+Modifiers
+
+* [append](#append---appendargs)
+* [overwrite](#overwrite---overwriteindex-args)
+* [erase](#erase---eraseindex)
+* [clear](#clear--clear)
+
+Persistence
+
+* [flush](#flush---flush)
+* [commit](#commit---commit)
 
 # -- MEMBER FUNCTIONS --
 
@@ -20,19 +34,22 @@
 
 ### Description
 
-Constructs a new filemanager instance and maps the file structure.
+Creates a new filemanager instance.
+
+***Scans entire file*** *during instantiation as a necessary step for setting important internal systems and variables.* ***Can cause delayed program starts*** *depending on the size of the managed file.*
 
 ### Parameters
 
-| Parameter   | Datatype                | Description    | Notes                                     |
-|-------------|-------------------------|----------------|-------------------------------------------|
-| `file_path` | `std::filesystem::path` | Path to a file | File will be created if it does not exist |
+| Parameter   | Type                    | Description    | Notes                                                    |
+| ----------- | ----------------------- | -------------- | -------------------------------------------------------- |
+| `file_path` | `std::filesystem::path` | Path to a file | File and parent directories will be created if necessary |
 
 ### Exceptions
 
-| Exception            | Cause                                        | Fix                                                                                     |
-|----------------------|----------------------------------------------|-----------------------------------------------------------------------------------------|
-| `std::runtime_error` | File was deleted or problems with permission | Ensure to run the program with enough permissions and check if read-only mode is active |
+| Exception            | Cause                                           | Fix                                                                                        |
+| -------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `fm::open_error`     | Manager was unable to read file content         | Ensure that nothing is locking the file and that the program is run with enough permission |
+| `fm::occupied_error` | Two managers tried to manage the same file path | Either pass by reference/pointer or use move semantics                                     |
 
 ### Code sample
 
@@ -52,6 +69,8 @@ int main() {
 
 Retrieves the content of a specified line.
 
+*Jumps to the position of a specified line and retrieves the content on the storage drive.*
+
 ### Parameters
 
 | Parameter | Datatype | Description        | Notes       |
@@ -66,10 +85,10 @@ Retrieves the content of a specified line.
 
 ### Exceptions
 
-| Exception            | Cause                                        | Fix                                                                                     |
-| -------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `std::out_of_range`  | Line doesn't exist                           | Check bounds with `size()` or `empty()` before access                                   |
-| `std::runtime_error` | File was deleted or problems with permission | Ensure to run the program with enough permissions and check if read-only mode is active |
+| Exception         | Cause                                       | Fix                                                                                        |
+| ----------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `fm::index_error` | Line does not exist                         | Check bounds with `size()` or `empty()` before access                                      |
+| `fm::open_error`  | Manager was unable to open file for reading | Ensure that nothing is locking the file and that the program is run with enough permission |
 
 ### Code sample
 
@@ -102,18 +121,20 @@ World
 
 Retrieves the content at the first line.
 
+*Retrieves the content on the storage drive at a cached index which represents the first line*
+
 ### Returns
 
 | Type          | Description | Notes |
-|---------------|-------------|-------|
+| ------------- | ----------- | ----- |
 | `std::string` | First line  |       |
 
 ### Exceptions
 
-| Exception            | Cause                                        | Fix                                                                                     |
-|----------------------|----------------------------------------------|-----------------------------------------------------------------------------------------|
-| `std::out_of_range`  | File is empty                                | Check bounds with `size()` or `empty()` before access                                   |
-| `std::runtime_error` | File was deleted or problems with permission | Ensure to run the program with enough permissions and check if read-only mode is active |
+| Exception         | Cause                                       | Fix                                                                                        |
+| ----------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `fm::empty_error` | File is empty                               | Check bounds with `size()` or `empty()` before access                                      |
+| `fm::open_error`  | Manager was unable to open file for reading | Ensure that nothing is locking the file and that the program is run with enough permission |
 
 ### Code sample
 
@@ -146,18 +167,20 @@ Hello
 
 Retrieves the content at the last line.
 
+*Retrieves the content on the storage drive at a cached index which represents the last line*
+
 ### Returns
 
 | Type          | Description | Notes |
-|---------------|-------------|-------|
+| ------------- | ----------- | ----- |
 | `std::string` | Last line   |       |
 
 ### Exceptions
 
-| Exception            | Cause                                        | Fix                                                                                     |
-|----------------------|----------------------------------------------|-----------------------------------------------------------------------------------------|
-| `std::out_of_range`  | File is empty                                | Check bounds with `size()` or `empty()` before access                                   |
-| `std::runtime_error` | File was deleted or problems with permission | Ensure to run the program with enough permissions and check if read-only mode is active |
+| Exception         | Cause                                       | Fix                                                                                        |
+| ----------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `fm::empty_error` | File is empty                               | Check bounds with `size()` or `empty()` before access                                      |
+| `fm::open_error`  | Manager was unable to open file for reading | Ensure that nothing is locking the file and that the program is run with enough permission |
 
 ### Code sample
 
@@ -190,17 +213,19 @@ int main() {
 
 Returns a chronological copy of every line.
 
+*Iterates through every line and copies it into a vector. Finishes a tiny bit slower than expected because the CPU has to perform "jumps" over erased indices.*
+
 ### Returns
 
 | Type                       | Description           | Notes        |
-|----------------------------|-----------------------|--------------|
+| -------------------------- | --------------------- | ------------ |
 | `std::vector<std::string>` | All lines in the file | Can be empty |
 
 ### Exceptions
 
-| Exception            | Cause                                        | Fix                                                                                     |
-|----------------------|----------------------------------------------|-----------------------------------------------------------------------------------------|
-| `std::runtime_error` | File was deleted or problems with permission | Ensure to run the program with enough permissions and check if read-only mode is active |
+| Exception        | Cause                                       | Fix                                                                                        |
+| ---------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `fm::open_error` | Manager was unable to open file for reading | Ensure that nothing is locking the file and that the program is run with enough permission |
 
 ### Code sample
 
@@ -231,25 +256,111 @@ World
 !
 ```
 
+# -- CAPACITY --
+
+## SIZE - `size()`
+
+### Description
+
+Returns the number of present lines.
+
+*Not commited appends also account for the number of present lines*
+
+### Returns
+
+| Type     | Description             | Notes |
+| -------- | ----------------------- | ----- |
+| `size_t` | Number of present lines |       |
+
+### Code sample
+
+```cpp
+/*
+    Imagine a file 'data.txt' with following lines:
+    (1) Hello
+    (2) World
+    (3) !  
+*/
+
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    std::cout << file.size();
+}
+```
+
+### Output
+
+```
+3
+```
+
+## EMPTY - `size()`
+
+### Description
+
+Returns true if the file is empty.
+
+*Not commited, erased lines also account for whether the result is true*
+
+### Returns
+
+| Type   | Description               | Notes |
+| ------ | ------------------------- | ----- |
+| `bool` | Whether the file is empty |       |
+
+### Code sample
+
+```cpp
+/*
+    Imagine a file 'data.txt' with following lines:
+    (1) Hello
+    (2) World
+    (3) !  
+*/
+
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    file.clear();
+    std::cout << file.empty();
+}
+```
+
+### Output
+
+```
+1 
+```
+
+Bools are displayed as 1 (true) or 0 (false) on the console
+
 # -- MODIFIERS --
 
 ## APPEND - `append(args)`
 
 ### Description
 
-Adds data as a new line at the end of the file. Doesn't update the file (Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).
+Adds data as a new line at the end of the file.
+
+*Appended content is stored in memory.* ***Does not update the file*** *(Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).*
 
 ### Parameters
 
-| Parameter | Datatype  | Description                  | Notes                         |
-|-----------|-----------|------------------------------|-------------------------------|
-| `args`    | `Args...` | One or more values to append | Must not contain `\n` or `\r` |
+| Parameter | Datatype  | Description                  | Notes                                                             |
+| --------- | --------- | ---------------------------- | ----------------------------------------------------------------- |
+| `args`    | `Args...` | One or more values to append | Must not contain `\n` or `\r` and must be convertable to a string |
 
 ### Exceptions
 
-| Exception               | Cause                                           | Fix                                                                    |
-|-------------------------|-------------------------------------------------|------------------------------------------------------------------------|
-| `std::invalid_argument` | Input contains newline character (`\n` or `\r`) | Remove `\n` and `\r` ocurrences when using `append()` or `overwrite()` |
+| Exception          | Cause                                                       | Fix                                                                                             |
+| ------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `fm::input_error`  | Input contains newline character (`\n` or `\r`)             | Remove `\n` and `\r` occurrences when using `append()` or `overwrite()`                         |
+| `fm::locked_error` | All attempts to save failed, manager entered read-only mode | Ensure nothing is locking the journal and main file and run the program with enough permissions |
 
 ### Code sample
 
@@ -274,23 +385,24 @@ helloworld!11
 
 ### Description
 
-Overwrites a line with new data.
+Overwrites a line with new text.
 
-*Does not update the file (Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).*
+*Overwrite is only stored in memory.* *Does not update the file (Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).*
 
 ### Parameters
 
-| Parameter | Datatype  | Description                  | Notes                         |
-|-----------|-----------|------------------------------|-------------------------------|
-| `index`   | `size_t`  | Line to overwrite            | Starts at 0                   |
-| `args`    | `Args...` | One or more values to append | Must not contain `\n` or `\r` |
+| Parameter | Datatype  | Description                       | Notes                                                             |
+| --------- | --------- | --------------------------------- | ----------------------------------------------------------------- |
+| `index`   | `size_t`  | Line to overwrite                 | Starts at 0                                                       |
+| `args`    | `Args...` | Values to overwrite the line with | Must not contain `\n` or `\r` and must be convertable to a string |
 
 ### Exceptions
 
-| Exception               | Cause                                           | Fix                                                                    |
-|-------------------------|-------------------------------------------------|------------------------------------------------------------------------|
-| `std::invalid_argument` | Input contains newline character (`\n` or `\r`) | Remove `\n` and `\r` ocurrences when using `append()` or `overwrite()` |
-| `std::out_of_range`     | Specified line doesn't exist                    | Check bounds with `size()` or `empty()` before access                  |
+| Exception          | Cause                                                       | Fix                                                                                             |
+| ------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `fm::input_error`  | Input contains newline character (`\n` or `\r`)             | Remove `\n` and `\r` occurrences when using `append()` or `overwrite()`                         |
+| `fm::index_error`  | Specified line does not exist                               | Check bounds with `size()` or `empty()` before access                                           |
+| `fm::locked_error` | All attempts to save failed, manager entered read-only mode | Ensure nothing is locking the journal and main file and run the program with enough permissions |
 
 ### Code sample
 
@@ -318,6 +430,95 @@ int main() {
 Goodbye
 ```
 
+## ERASE - `erase(index)`
+
+### Description
+
+Delete a line, shifting later lines down to fill the gap.
+
+*Delete is only stored in memory.* ***Does not update the file*** *(Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).*
+
+### Parameters
+
+| Parameter | Datatype | Description       | Notes       |
+| --------- | -------- | ----------------- | ----------- |
+| `index`   | `size_t` | Line to overwrite | Starts at 0 |
+
+### Exceptions
+
+| Exception          | Cause                                                       | Fix                                                                                             |
+| ------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `fm::index_error`  | Specified line does not exist                               | Check bounds with `size()` or `empty()` before access                                           |
+| `fm::locked_error` | All attempts to save failed, manager entered read-only mode | Ensure nothing is locking the journal and main file and run the program with enough permissions |
+
+### Code sample
+
+```cpp
+/*
+    Imagine a file 'data.txt' with following lines:
+    (1) Hello
+    (2) World
+    (3) !  
+*/
+
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    file.erase(0);
+    std::cout << file.read(0) << "\n";
+    std::cout << file.size();
+}
+```
+
+### Output
+
+```powershell
+World
+2
+```
+
+## CLEAR- `clear()`
+
+### Description
+
+Delete all lines, effectively making the file empty.
+
+*Clear is only stored in memory.* ***Does not update the file*** *(Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).*
+
+### Exceptions
+
+| Exception          | Cause                                                       | Fix                                                                                             |
+| ------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `fm::locked_error` | All attempts to save failed, manager entered read-only mode | Ensure nothing is locking the journal and main file and run the program with enough permissions |
+
+### Code sample
+
+```cpp
+/*
+    Imagine a file 'data.txt' with following lines:
+    (1) Hello
+    (2) World
+    (3) !  
+*/
+
+#include <iostream>
+#include "filemanager.h"
+
+int main() {
+    fm::filemanager file("data.txt");
+    file.clear();
+    std::cout << file.size();
+}
+```
+
+### Output
+
+```powershell
+0
+```
+
 # -- PERSISTENCE --
 
 ## FLUSH - `flush()`
@@ -326,7 +527,7 @@ Goodbye
 
 Records all changes in a journal, making recovery possible after a crash.
 
-**Does not apply changes** (see [commit()](#commit---commit)).
+***Changes won't be written to the main file*** *(see [commit()](#commit---commit)).* ***Can cause delays*** *during program start if changes are not committed occasionaly.*
 
 ### Returns
 
@@ -361,6 +562,10 @@ this data will be recovered!
 this data will be recovered!
 ```
 
+**1st line was recovered!**
+
+**2nd line is from append() in 2nd program start!**
+
 ### File content
 
 ```
@@ -373,7 +578,7 @@ this data will be recovered!
 
 Deletes the journal and applies all changes to the main file.
 
-Triggers reconstruction internals to make up for the new file. It's **discouraged to repeatedly call** `commit()`. It can have a **noticeable impact on performance** if used carelessly on big files.
+*Triggers reconstruction internals to make up for the new file.* *It's* ***discouraged to repeatedly call*** `commit()`. *It can have a* ***noticeable impact on performance*** *if used carelessly on big files.*
 
 ### Returns
 
@@ -381,7 +586,13 @@ Triggers reconstruction internals to make up for the new file. It's **discourage
 | ------ | --------------------------------- | ------------------------------------------------------------- |
 | `bool` | Whether committing was successful | Handle possible failures if the working directory is unstable |
 
-Code sample
+## Exceptions
+
+| Exception          | Cause                                                 | Fix                                                                                                                               |
+| ------------------ | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `fm::delete_error` | Failed to delete journal file after successful commit | **Delete journal file manually!** Ensure that program is run with enough permissions and that nothing is locking the journal file |
+
+## Code sample
 
 ```cpp
 #include <iostream>
