@@ -23,44 +23,44 @@ namespace fm {
 //                    EXCEPTIONS
 // --------------------------------------------------
 
-class invalid_index_error : public std::out_of_range {
+class index_error : public std::out_of_range {
 public:
-    explicit invalid_index_error(const size_t index)
+    explicit index_error(const size_t index)
         :   std::out_of_range("fm::filemanager: tried to access line with index " + std::to_string(index) + " which doesn't exist")
     {}
 };
 
-class file_empty_error : public std::out_of_range {
+class empty_error : public std::out_of_range {
 public:
-    explicit file_empty_error()
+    explicit empty_error()
         :   std::out_of_range("fm::filemanager: tried to access front/back on an empty file")
     {}
 };
 
-class illegal_character_error : public std::invalid_argument {
+class input_error : public std::invalid_argument {
 public:
-    explicit illegal_character_error()
+    explicit input_error()
         :   std::invalid_argument("fm::filemanager: tried to write newline character (\\n or \\r)")
     {}
 };
 
-class file_locked_error : public std::runtime_error {
+class locked_error : public std::runtime_error {
 public:
-    explicit file_locked_error()
+    explicit locked_error()
       :   std::runtime_error("fm::filemanager: all attempts to save failed. manager entered read-only mode")
     {}
 };
 
-class failed_delete_journal_error : public std::runtime_error {
+class delete_error : public std::runtime_error {
 public:
-    explicit failed_delete_journal_error()
+    explicit delete_error()
       :   std::runtime_error("fm::filemanager: failed to delete journal")
     {}
 };
 
-class couldnt_open_file_error : public std::runtime_error {
+class open_error : public std::runtime_error {
 public:
-    explicit couldnt_open_file_error(const std::filesystem::path& file_path)
+    explicit open_error(const std::filesystem::path& file_path)
       :   std::runtime_error("fm::filemanager: couldnt open file " + file_path.string())
     {}
 };
@@ -143,6 +143,10 @@ public:
         }
     }
 
+    [[nodiscard]] uint64_t data() const {
+        return this->bitset_;
+    }
+
     void set(const uint16_t bit) {
         assert(bit < 64 && "Bitset::set() -> bit is out of bounds");
         bitset_ |= (1ULL << bit);
@@ -201,7 +205,7 @@ public:
 
     void build() {
         std::ifstream istream(file_path_, std::ios::binary);
-        if (!istream.is_open()) throw couldnt_open_file_error(file_path_);
+        if (!istream.is_open()) throw open_error(file_path_);
 
         size_t first_line_size = std::string::npos;
         std::vector<uint32_t> offset_sums(128);
@@ -262,6 +266,7 @@ class PhysicalIndexMap {
 public:
     [[nodiscard]] size_t select(const size_t logical_index) {
         for (size_t total_active_bits = 0, i = front() / 64; i < layout_.size(); ++i) {
+            if (layout_[i].data() == 0) continue;
             if (const uint16_t active_bits = layout_[i].count();
                 active_bits + total_active_bits > logical_index) {
                 const size_t goal = logical_index - total_active_bits;
@@ -482,7 +487,7 @@ public:
 private:
     [[nodiscard]] std::string access_(const size_t physical_index) {
         if (const auto it = changes_.find(physical_index); it != changes_.end()) return it->second;
-        if (!istream_.is_open()) throw couldnt_open_file_error(file_path_);
+        if (!istream_.is_open()) throw open_error(file_path_);
         istream_.seekg(static_cast<std::streamoff>(byte_offset_map_.select(physical_index)), std::ios::beg);
 
         std::string line;
@@ -496,7 +501,7 @@ private:
     LineByteOffsetMap byte_offset_map_;
     std::ifstream istream_;
     const std::filesystem::path file_path_;
-    std::pmr::unordered_map<size_t, std::string> changes_;
+    std::unordered_map<size_t, std::string> changes_;
     bool needs_consolidation_ = false;
 };
 
@@ -524,7 +529,7 @@ public:
         std::string line;
         std::vector<std::string> args;
 
-        if (!istream.is_open()) throw couldnt_open_file_error(journal_path_);
+        if (!istream.is_open()) throw open_error(journal_path_);
 
         while (std::getline(istream, line)) {
             if (line.size() < 2) continue;
@@ -671,7 +676,7 @@ public:
      * @throw out_of_range If the given index is out of bounds
      */
     [[nodiscard]] std::string read(const size_t index) {
-        if (index >= file_io_.size()) throw invalid_index_error(index);
+        if (index >= file_io_.size()) throw index_error(index);
         return file_io_.read(index);
     }
 
@@ -681,7 +686,7 @@ public:
      * @throw out_of_range If the file is empty
      */
     [[nodiscard]] std::string front() {
-        if (file_io_.empty()) throw file_empty_error();
+        if (file_io_.empty()) throw empty_error();
         return file_io_.front();
     }
 
@@ -691,7 +696,7 @@ public:
      * @throw out_of_range If the file is empty
      */
     [[nodiscard]] std::string back() {
-        if (file_io_.empty()) throw file_empty_error();
+        if (file_io_.empty()) throw empty_error();
         return file_io_.back();
     }
 
@@ -711,12 +716,12 @@ public:
      */
     template<typename... Args>
     void append(Args... args) {
-        if (manager_state_ == internal::ManagerState::Locked) throw file_locked_error();
+        if (manager_state_ == internal::ManagerState::Locked) throw locked_error();
 
         std::ostringstream oss;
         (oss << ... << args);
 
-        if (!is_valid_input_(oss.str())) throw illegal_character_error();
+        if (!is_valid_input_(oss.str())) throw input_error();
 
         file_io_.append(oss.str());
         journal_.record(internal::Instruction::Append, oss.str());
@@ -731,13 +736,13 @@ public:
      */
     template<typename... Args>
     void overwrite(const size_t index, Args... args) {
-        if (manager_state_ == internal::ManagerState::Locked) throw file_locked_error();;
-        if (index >= file_io_.size()) throw invalid_index_error(index);
+        if (manager_state_ == internal::ManagerState::Locked) throw locked_error();;
+        if (index >= file_io_.size()) throw index_error(index);
 
         std::ostringstream oss;
         (oss << ... << args);
 
-        if (!is_valid_input_(oss.str())) throw illegal_character_error();;
+        if (!is_valid_input_(oss.str())) throw input_error();;
 
         file_io_.overwrite(index, oss.str());
         journal_.record(internal::Instruction::Overwrite, index, oss.str());
@@ -749,8 +754,8 @@ public:
      * @throw out_of_range If the given index is out of bounds
      */
     void erase(const size_t index) {
-        if (manager_state_ == internal::ManagerState::Locked) throw file_locked_error();;
-        if (index >= file_io_.size()) throw invalid_index_error(index);
+        if (manager_state_ == internal::ManagerState::Locked) throw locked_error();;
+        if (index >= file_io_.size()) throw index_error(index);
         file_io_.erase(index);
         journal_.record(internal::Instruction::Erase, index);
     }
@@ -759,7 +764,7 @@ public:
      * @brief Deletes every line, making the file empty
      */
     void clear() {
-        if (manager_state_ == internal::ManagerState::Locked) throw file_locked_error();;
+        if (manager_state_ == internal::ManagerState::Locked) throw locked_error();;
         file_io_.clear();
         journal_.record(internal::Instruction::Clear);
     }
@@ -798,7 +803,7 @@ public:
         } else if (commited) {
             manager_state_ = internal::ManagerState::Locked;
             file_io_.load();
-            throw failed_delete_journal_error();
+            throw delete_error();
         }
 
         if (!journal_.flush()) {

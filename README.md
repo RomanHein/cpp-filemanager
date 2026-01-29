@@ -2,7 +2,7 @@
 A super simple, lightweight and high-performance C++ library that handles file storage for you.
 
 # Sample
-```
+```cpp
 #include <iostream>
 #include "filemanager.h"
 
