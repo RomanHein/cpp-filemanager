@@ -1,5 +1,12 @@
 # Content
 
+Important
+
+* [copy/move-semantics](#copymove-semantics)
+* [thread-safety](#thread-safety)
+* [destructor-behaviour](#destructor-behaviour)
+* [journal](#journal)
+
 Member functions
 
 * [constructor](#constructor---filemanagerfile_path)
@@ -13,8 +20,8 @@ Element access
 
 Capacity
 
-* [size()](#size---size)
-* [empty()](#clear--clear)
+* [size](#size---size)
+* [empty](#empty--empty)
 
 Modifiers
 
@@ -27,6 +34,28 @@ Persistence
 
 * [flush](#flush---flush)
 * [commit](#commit---commit)
+
+# -- Important --
+
+## THREAD-SAFETY
+
+The class is **not thread safe**.
+
+## DESTRUCTOR-BEHAVIOUR
+
+**Changes are not saved** when a filemanger object is destroyed. Explicit persistance is required via [flush](#flush---flush) or [commit](#commit---commit).
+
+## COPY/MOVE-SEMANTICS
+
+The class is **move-only**. Trying to copy a filemanager object won't work due to the nature of the design.
+
+## JOURNAL
+
+The journal file is kept in the same directory as the main file. Its name follows a simple rule: main file name + `_journal`. It always uses the `.log` extension.
+
+### Example
+Main file: `text.txt` in `C:/dir/text.txt`  
+Journal file: `text_journal.log` in `C:/dir/text_journal.log`
 
 # -- MEMBER FUNCTIONS --
 
@@ -297,7 +326,7 @@ int main() {
 3
 ```
 
-## EMPTY - `size()`
+## EMPTY - `empty()`
 
 ### Description
 
@@ -355,6 +384,12 @@ Adds data as a new line at the end of the file.
 | --------- | --------- | ---------------------------- | ----------------------------------------------------------------- |
 | `args`    | `Args...` | One or more values to append | Must not contain `\n` or `\r` and must be convertable to a string |
 
+### Returns
+
+| Type   | Description | Notes |
+| ------ | ----------- | ----- |
+| `void` |             |       |
+
 ### Exceptions
 
 | Exception          | Cause                                                       | Fix                                                                                             |
@@ -396,6 +431,12 @@ Overwrites a line with new text.
 | `index`   | `size_t`  | Line to overwrite                 | Starts at 0                                                       |
 | `args`    | `Args...` | Values to overwrite the line with | Must not contain `\n` or `\r` and must be convertable to a string |
 
+### Returns
+
+| Type   | Description | Notes |
+| ------ | ----------- | ----- |
+| `void` |             |       |
+
 ### Exceptions
 
 | Exception          | Cause                                                       | Fix                                                                                             |
@@ -434,15 +475,21 @@ Goodbye
 
 ### Description
 
-Delete a line, shifting later lines down to fill the gap.
+Deletes a line, shifting later lines down to fill the gap.
 
 *Delete is only stored in memory.* ***Does not update the file*** *(Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).*
 
 ### Parameters
 
-| Parameter | Datatype | Description       | Notes       |
-| --------- | -------- | ----------------- | ----------- |
-| `index`   | `size_t` | Line to overwrite | Starts at 0 |
+| Parameter | Datatype | Description   | Notes       |
+| --------- | -------- | ------------- | ----------- |
+| `index`   | `size_t` | Line to erase | Starts at 0 |
+
+### Returns
+
+| Type   | Description | Notes |
+| ------ | ----------- | ----- |
+| `void` |             |       |
 
 ### Exceptions
 
@@ -486,6 +533,12 @@ World
 Delete all lines, effectively making the file empty.
 
 *Clear is only stored in memory.* ***Does not update the file*** *(Check [flush()](#flush---flush) and [commit()](#commit---commit) for more info).*
+
+### Returns
+
+| Type   | Description | Notes |
+| ------ | ----------- | ----- |
+| `void` |             |       |
 
 ### Exceptions
 
@@ -562,9 +615,9 @@ this data will be recovered!
 this data will be recovered!
 ```
 
-**1st line was recovered!**
+First line was recovered from the journal and loaded into memory during construction. The object therefore started with the memory of the previous filemanager instance before the program crashed.
 
-**2nd line is from append() in 2nd program start!**
+Second line was added just now because after running the program for the second time, we also call `file.append("this data will be recovered!");` for the second time.
 
 ### File content
 
